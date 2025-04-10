@@ -43,6 +43,12 @@ const contributedPositions = [
 
 const opportunityPositions = [
   {
+    id: "1",
+    title: "AI Product Manager",
+    demand: "High",
+    estimatedEarnings: "80-120 EDU",
+  },
+  {
     id: "5",
     title: "DevOps Engineer",
     demand: "High",

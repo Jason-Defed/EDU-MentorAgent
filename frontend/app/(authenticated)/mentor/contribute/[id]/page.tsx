@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -9,6 +9,22 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { SendIcon, PlusIcon, XIcon } from "lucide-react"
 import { initContract, contract } from "../../../../../contract/contract"
+import { useOCAuth } from "@opencampus/ocid-connect-js";
+import { jwtDecode } from "jwt-decode";
+import { useToast } from "@/hooks/use-toast";
+
+
+interface DecodedToken {
+  user_id: number;
+  eth_address: string;
+  edu_username: string;
+  iss: string;
+  iat: number;
+  exp: number;
+  aud: string;
+  [key: string]: any;
+}
+
 
 export default function ContributePage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -18,6 +34,15 @@ export default function ContributePage({ params }: { params: { id: string } }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [contributionValue, setContributionValue] = useState<number | null>(null)
   const [isCalculateLoading, setIsCalculateLoading] = useState(false)
+  const { authState, ocAuth, OCId, ethAddress } = useOCAuth();
+  let userInfo: DecodedToken | null = null;
+  const { toast } = useToast(); 
+
+
+  if (authState?.idToken) {
+    userInfo = jwtDecode<DecodedToken>(authState.idToken);
+  }
+
 
   const positionTitle =
     params.id === "1"
@@ -51,13 +76,21 @@ export default function ContributePage({ params }: { params: { id: string } }) {
   //               : "Selected Position"
               
 
-  // Mock questions for the position
+  // general questions for the position
   const questions = [
     "What are the essential technical skills required for this position?",
     "What are common challenges professionals face in this role?",
     "What projects or experiences would best prepare someone for this position?",
     "What tools and technologies are most important to learn?",
     "What advice would you give to someone starting in this field?",
+  ]
+
+  const AIQuestions = [
+    "How do you determine the optimal pricing strategy for a new AI product in a market where competitors offer similar functionalities but at varying price points?",
+    "Can you describe a specific instance where you used AutoML or low-code tools to validate a technical solution before committing to full development? What were the key insights gained?",
+    'What metrics do you prioritize in your "Economic Model Dashboard" to ensure real-time monitoring of LTV and token costs aligns with commercial viability?',
+    "How do you conduct competitive reverse engineering to identify gaps in competitors' API offerings, and what tools do you rely on for this analysis?",
+    "In your experience, what are the most effective methods for validating customer demand before full product development (e.g., Figma prototypes, shadow tests)? How do you measure success in these experiments?",
   ]
 
   const handleAnswerChange = (value: string) => {
@@ -67,7 +100,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
   }
 
   const handleNext = async () => {
-    if (currentQuestion < questions.length - 1) {
+    if (currentQuestion < AIQuestions.length - 1) {
       setCurrentQuestion(currentQuestion + 1)
     } else {
       // Calculate contribution value based on answers
@@ -90,8 +123,6 @@ export default function ContributePage({ params }: { params: { id: string } }) {
   }
 
   const handleAddFile = () => {
-    // In a real app, this would open a file picker
-    // For demo purposes, we'll just add a mock file
     setFiles([...files, `Sample-Resource-${files.length + 1}.pdf`])
   }
 
@@ -103,7 +134,6 @@ export default function ContributePage({ params }: { params: { id: string } }) {
 
   const calculateContributionValue = () => {
     // In a real app, this would call an AI service to evaluate the contribution
-    // For demo purposes, we'll calculate a simple score based on answer lengths
     const totalLength = answers.reduce((sum, answer) => sum + answer.length, 0)
     const baseValue = 50
     const lengthBonus = Math.floor(totalLength / 100) * 5
@@ -115,6 +145,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
   useEffect(() => {
     initContract();
   }, []);
+
 
   const updateAgentContributors = async (agentId: number, updatedContributors: any[]) => {
     try {
@@ -128,9 +159,16 @@ export default function ContributePage({ params }: { params: { id: string } }) {
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000))
+      // const updatedContributors = [[userInfo?.eth_address, 2000]];
+      // const tx = await contract.updateAgentContributors(1, updatedContributors);
+      // await tx.wait();
+      // console.log("Agent contributors updated:", tx);
+      // toast({
+      //   title: "Success",
+      //   description: `Updated your contribution on chain. Tx Hash: ${tx.hash}`,
+      // });
       router.push("/mentor/dashboard")
     } catch (error) {
       console.error("Error submitting contribution:", error)
@@ -151,15 +189,15 @@ export default function ContributePage({ params }: { params: { id: string } }) {
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">
-                  Question {currentQuestion + 1} of {questions.length}
+                  Question {currentQuestion + 1} of {AIQuestions.length}
                 </h3>
                 <Badge variant="outline">
-                  {currentQuestion + 1}/{questions.length}
+                  {currentQuestion + 1}/{AIQuestions.length}
                 </Badge>
               </div>
 
               <div className="p-4 border rounded-md bg-gray-50">
-                <p className="font-medium">{questions[currentQuestion]}</p>
+                <p className="font-medium">{AIQuestions[currentQuestion]}</p>
               </div>
 
               <div className="space-y-2">
@@ -173,7 +211,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
                 />
               </div>
 
-              {currentQuestion === questions.length - 1 && (
+              {currentQuestion === AIQuestions.length - 1 && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <Label>Supporting Materials (Optional)</Label>
@@ -208,7 +246,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
                   disabled={!answers[currentQuestion].trim()}
                   className="bg-teal-600 hover:bg-teal-700"
                 >
-                  {currentQuestion === questions.length - 1 ? "Calculate Value" : "Next"}
+                  {currentQuestion === AIQuestions.length - 1 ? "Calculate Value" : "Next"}
                 </Button>
               </div>
             </div>
@@ -229,7 +267,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
                 <div className="space-y-2">
                   <div className="flex justify-between p-2 border-b">
                     <span>Questions Answered</span>
-                    <span className="font-medium">{questions.length}/5</span>
+                    <span className="font-medium">{AIQuestions.length}/5</span>
                   </div>
                   <div className="flex justify-between p-2 border-b">
                     <span>Supporting Materials</span>
