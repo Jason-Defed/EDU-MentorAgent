@@ -1,0 +1,6 @@
+openai>=1.0.0
+flask
+flask-cors
+tweepy
+schedule
+python-dotenv==1.1.0
